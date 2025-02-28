@@ -13,11 +13,13 @@ function setup() {
             0, 0, 0,
             1, 0, 1
             )
+  lights(); // Enable default lighting
+
 
 }
 
 function draw() {
-  background(220);
+  background(0);
   orbitControl();
   // print camera position and rotation
   // console.log(`cam pos: ${cam.eyeX}, ${cam.eyeY}, ${cam.eyeZ}, cam rot: ${cam.centerX}, ${cam.centerY}, ${cam.centerZ}`);
@@ -49,13 +51,22 @@ function drawAxis() {
   stroke(0)
 }
 
+function drawGlowingBox(fillColor) {
+      // ACTUALLY DRAW THE BOX
+      fill(fillColor);
+      box(cubeSize);
+
+}
+
 function drawGrid(grid) {
   for (var i = 0; i < gridSize; i++) {
     for (var j = 0; j < gridSize; j++) {
       push();
       translate(i * cubeSize, j * cubeSize, 0);
-      fill(grid[i][j]);
-      box(cubeSize);
+      let fillColor = grid[i][j]
+
+      drawGlowingBox(fillColor); 
+
       pop();
     }
   }
