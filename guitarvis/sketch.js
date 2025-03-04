@@ -3,10 +3,16 @@ var gridSize = 15;
 var cubeSize = 50;
 var grids = [];
 let glassShader;
+let BPM = 86; // Default BPM (adjust as needed)
+let stepInterval; // Store interval ID
+
+let fft = new p5.FFT(); 
+let song;
 
 function preload() {
   // Load the custom shader files (make sure they are in your project folder)
   glassShader = loadShader('shaders/glass.vert', 'shaders/glass.frag');
+  song = loadSound('./igreja_da_penha.mp3');
 }
 
 function setup() {
@@ -18,75 +24,11 @@ function setup() {
 
   lights();
   noStroke();
-  // Enable blending so that our cubes appear semi-transparent
-  blendMode(BLEND);
-}
+  blendMode(BLEND); // Enable blending for transparency
 
-function draw() {
-  background(0);
-  console.log(cam.eyeX, cam.eyeY, cam.eyeZ);
-  orbitControl();
-  drawAxis();
+  fft = new p5.FFT(0.8, 1024);
 
-  // Draw each grid (stacking grids along the z-axis)
-  for (var g = 0; g < grids.length; g++) {
-    push();
-    drawGrid(grids[g]);
-    pop();
-    translate(0, 0, cubeSize);
-  }
-}
-
-function drawAxis() {
-  // Draw x axis in red
-  stroke(255, 0, 0);
-  line(-3000, 0, 0, 3000, 0, 0);
-  // Draw y axis in green
-  stroke(0, 255, 0);
-  line(0, -3000, 0, 0, 3000, 0);
-  // Draw z axis in blue
-  stroke(0, 0, 255);
-  line(0, 0, -3000, 0, 0, 3000);
-  noStroke();
-}
-
-function drawGlowingBox(fillColor) {
-  // Activate our custom glass shader
-  shader(glassShader);
-  // Pass the cube’s color to the shader (normalize to 0-1)
-  glassShader.setUniform('uFillColor', [fillColor[0] / 255, fillColor[1] / 255, fillColor[2] / 255]);
-  // Draw the box
-  box(cubeSize);
-  // Reset to the default shader for anything else
-  resetShader();
-}
-
-function drawGrid(grid) {
-  for (var i = 0; i < gridSize; i++) {
-    for (var j = 0; j < gridSize; j++) {
-      push();
-      translate(i * cubeSize, j * cubeSize, 0);
-      let fillColor = grid[i][j];
-      drawGlowingBox(fillColor);
-      pop();
-    }
-  }
-}
-
-function nextGrid() {
-  // Generate a new grid with random colors
-  var grid = [];
-  for (var i = 0; i < gridSize; i++) {
-    grid[i] = [];
-    for (var j = 0; j < gridSize; j++) {
-      grid[i][j] = [
-        Math.floor(Math.random() * 255),
-        Math.floor(Math.random() * 255),
-        Math.floor(Math.random() * 255)
-      ];
-    }
-  }
-  grids.push(grid);
+  startBPM(); // Start automatic stepping
 }
 
 function stepCamera() {
@@ -104,7 +46,6 @@ function stepCamera() {
     let elapsed = millis() - startTime;
     let progress = constrain(elapsed / duration, 0, 1); // Normalize progress
 
-    // Linear interpolation from current Z to target Z
     let newZ = lerp(camZ, targetZ, progress);
     cam.setPosition(camX, camY, newZ); // Update camera position
 
@@ -113,10 +54,80 @@ function stepCamera() {
     }
   }
 
-  animate(); // Start the animation
+  animate();
+}
+
+function draw() {
+  background(0);
+  orbitControl();
+  drawAxis();
+
+  for (var g = 0; g < grids.length; g++) {
+    push();
+    drawGrid(grids[g]);
+    pop();
+    translate(0, 0, cubeSize);
+  }
+}
+
+function drawAxis() {
+  stroke(255, 0, 0); line(-3000, 0, 0, 3000, 0, 0); // X-axis
+  stroke(0, 255, 0); line(0, -3000, 0, 0, 3000, 0); // Y-axis
+  stroke(0, 0, 255); line(0, 0, -3000, 0, 0, 3000); // Z-axis
+  noStroke();
+}
+
+function drawGlowingBox(fillColor) {
+  shader(glassShader);
+  glassShader.setUniform('uFillColor', [fillColor[0] / 255, fillColor[1] / 255, fillColor[2] / 255]);
+  box(cubeSize);
+  resetShader();
+}
+
+function drawGrid(grid) {
+  for (var i = 0; i < gridSize; i++) {
+    for (var j = 0; j < gridSize; j++) {
+      push();
+      translate(i * cubeSize, j * cubeSize, 0);
+      drawGlowingBox(grid[i][j]);
+      pop();
+    }
+  }
+}
+
+function nextGrid() {
+  var grid = [];
+  for (var i = 0; i < gridSize; i++) {
+    grid[i] = [];
+    for (var j = 0; j < gridSize; j++) {
+      grid[i][j] = [
+        Math.floor(Math.random() * 255),
+        Math.floor(Math.random() * 255),
+        Math.floor(Math.random() * 255)
+      ];
+    }
+  }
+  grids.push(grid);
+}
+
+function step() {
+  nextGrid();
+  stepCamera();
 }
 
 function mouseClicked() {
-  nextGrid();
-  stepCamera();
+  step();
+}
+
+//**
+// 
+// FFT AND MUSIC STUFF 
+//
+//  */
+
+// 🕒 Function to start automatic stepping based on BPM
+function startBPM() {
+  if (stepInterval) clearInterval(stepInterval); // Clear any existing interval
+  let intervalTime = (60 / BPM) * 1000; // Convert BPM to milliseconds per step
+  stepInterval = setInterval(step, intervalTime);
 }
